@@ -2,13 +2,8 @@
   text-align: center;
 }
 
-.center{
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-    top: 50px;
-    left: 50px;
-    position: absolute;
+.center {
+   
 }
 
 .App-logo {

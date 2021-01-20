@@ -5,6 +5,9 @@
 /.pnp
 .pnp.js
 
+#snapshots photos from the factory
+/public/snapshots
+
 # testing
 /coverage
 

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import './App.css';
 import * as posenet from "@tensorflow-models/posenet";
 import * as tf from "@tensorflow/tfjs";
@@ -6,8 +6,7 @@ import "@tensorflow/tfjs-backend-webgl";
 import { drawKeypoints, drawSkeleton } from "./utilities";
 
 tf.setBackend('webgl').then(() => { console.log('The backend is', tf.getBackend()) });
-///console.log(tf.getBackend());
-//tf.setBackend('webgl')
+
 
 export interface AppProps {
     imageWidth: 640,
@@ -48,9 +47,9 @@ App.defaultProps = {
 
 function App(props: AppProps) {
 
-    const imageNumber = 0;
-    //currentImageElement is being used in the detection
-    const currentImageElement = new Image(props.imageWidth, props.imageHeight);
+    // index used to keep track of what image I am on
+    var imageNumber = 0;
+    
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
 
@@ -64,90 +63,110 @@ function App(props: AppProps) {
         detectPoses(net);
     }
 
-    const detectPoses = async (net: any) => {
-        currentImageElement.src = props.imageAddresses[imageNumber]
 
-        const poses = await net.estimateMultiplePoses(currentImageElement, {
+    const detectPoses = async (net: any) => {
+
+        // displays image
+        const detectionImage = loadImage()
+
+        // detect poses
+        const poses = await net.estimateMultiplePoses(detectionImage, {
             flipHorizontal: props.flipHorizontal,
             maxDetections: props.maxDetections,
             scoreThreshold: props.scoreThreshold,
             nmsRadius: props.nmsRadius
         });
         console.log(poses);
+
+        // draw keypoints and skeleton
         drawCanvas(poses);
+
+        setTimeout(() => {
+            imageNumberChange();
+            detectPoses(net);
+        }, 3000)
     }
 
-
+    // function to draw pose keypoints and skeleton
     const drawCanvas = (poses: any) => {
-      
+
         if (canvasRef.current !== null) {
+
             const context = canvasRef.current.getContext('2d');
 
+            // clear the canvas before drawing
+            if (context !== null) {
+                context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                context.beginPath();
+            }
+
+            // draw the keypoints and skeleton for each pose detected
             for (const pose of poses) {
                 if (pose['keypoints'] === undefined) {
                     return (console.log('No poses detected'));
                 }
+
+                // the number attributes is the minimum confidence for the skeleton to be drawn.
                 drawKeypoints(pose['keypoints'], 0.1, context);
                 drawSkeleton(pose["keypoints"], 0.1, context);
             }
         }
-        
     }
+
+
+    const loadImage = () => {
+
+        // creates a new img 
+        const currentImage = new Image(props.imageWidth, props.imageHeight);
+        currentImage.src = props.imageAddresses[imageNumber];
+        currentImage.className = "center";
+
+        // grabs img being shown in the document
+        const pastImage = document.getElementById("image");
+
+        // replaces the img in the document with the new img
+        if (pastImage !== null && document.getElementById("header") !== null) {
+            currentImage.id = pastImage.id;
+            document.getElementById("header")?.replaceChild(currentImage, pastImage);
+        }
+
+        // return the img for posenet to use
+        return (currentImage);
+    }
+
+    const imageNumberChange = () => {
+        if (imageNumber === 2) {
+            imageNumber = 0;
+        }
+        else {
+            imageNumber = imageNumber + 1;
+        }
+    }
+
 
     loadPosenet();
 
 
   return (
-    <div className="App">
-      <header className="App-header">
-              <h1> posenet-d </h1>
-              <h2> Using posenet on images </h2>
-              <DetectedImage {...props} />
+      <div className="App">
+          
+      <header id="header" className="App-header">
+              <h2> Identifying human poses with tensorflow posenet model </h2>
               <canvas
                   ref={canvasRef}
                   width={props.imageWidth}
                   height={props.imageHeight}
                   className='center'
               />
+              <img
+                  id="image"
+                  src=""
+                  alt = "Factory"
+              />
+
       </header>
     </div>
   );
-}
-
-
-function DetectedImage(props: any) {
-
-    const [imageNumber, setImageNumber] = useState(0)
-
-    const imageChange = () => {
-
-        //checks to see if placeholder has reached the end of images
-        if (imageNumber === props.imageAddresses.length - 1) {
-            setImageNumber(0)
-        }
-
-        // sets imageplace holder to next image.
-        else {
-            setImageNumber(imageNumber + 1)
-        }
-    }
-
-    //setTimeout(() => imageChange(), props.timeStep);
-
-
-    return (
-        <div>
-            <img id="imageID"
-                //ref={imageRef}
-                alt="factory"
-                width={props.imageWidth}
-                height={props.imageHeight}
-                src={props.imageAddresses[imageNumber]}
-                className='center'
-            /> 
-        </div>
-        )
-
 }
 
 export default App;
